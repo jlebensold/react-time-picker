@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "has-touch": "^1.0.1",
+    "moment": "^2.8.0",
     "object-assign": "^2.0.0",
     "parse-time": "^0.1.1",
     "react": "^0.12.2",
