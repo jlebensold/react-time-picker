@@ -38,7 +38,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/radubrehar/react-time-picker.git"
+    "url": "https://github.com/zippyui/react-time-picker.git"
   },
   "keywords": [
     "time",
@@ -47,10 +47,13 @@
     "react",
     "react-component"
   ],
-  "author": "Radu Brehar",
+  "author": "Zippy Technologies",
+  "contributors": [
+    "Radu Brehar <radu@evanghelic.ro>"
+  ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/radubrehar/react-time-picker/issues"
+    "url": "https://github.com/zippyui/react-time-picker/issues"
   },
-  "homepage": "https://github.com/radubrehar/react-time-picker"
+  "homepage": "https://github.com/zippyui/react-time-picker"
 }
