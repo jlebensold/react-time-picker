@@ -1,6 +1,6 @@
 {
   "name": "react-time-picker",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "React Time Picker",
   "main": "lib/index.js",
   "scripts": {
