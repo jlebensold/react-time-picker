@@ -44,7 +44,6 @@ module.exports = React.createClass({
 		return {
 			stopChangePropagation: true,
 
-
 			//makes 15:78 be converted to 15:00, and not to 16:18
 			strict: true,
 			overflowHourToMeridian: true,
