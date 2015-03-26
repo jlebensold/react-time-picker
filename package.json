@@ -1,0 +1,41 @@
+{
+  "name": "react-time-picker-gh-pages",
+  "version": "1.0.0",
+  "private": true,
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "lib": "./node_modules/.bin/gulp",
+    "dist": "./node_modules/.bin/webpack --progress --colors --config dist.config.js",
+    "dist.min": "./node_modules/.bin/webpack --progress --colors --optimize-minimize --optimize-occurence-order --optimize-dedupe --config dist.min.config.js",
+    "build": "npm run lib && npm run dist && npm run dist.min",
+    "serve": "./node_modules/.bin/http-server -p 9091",
+    "dev": "./node_modules/.bin/webpack-dev-server --progress --colors --port 9090 --content-base http://localhost:9091"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zippyui/react-time-picker.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zippyui/react-time-picker/issues"
+  },
+  "homepage": "https://github.com/zippyui/react-time-picker",
+  "dependencies": {
+    "normalize.css": "^3.0.2",
+    "react": "^0.13.1",
+    "react-time-picker": "^1.0.2"
+  },
+  "devDependencies": {
+    "css-loader": "^0.9.1",
+    "gulp": "^3.8.11",
+    "gulp-react": "^3.0.1",
+    "http-server": "^0.8.0",
+    "jsx-loader": "^0.12.2",
+    "style-loader": "^0.9.0",
+    "stylus-loader": "^1.0.0",
+    "webpack": "^1.7.3",
+    "webpack-dev-server": "^1.7.0"
+  }
+}
