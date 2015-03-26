@@ -1,6 +1,6 @@
 # react-time-picker
 
-> A carefully designed time picker for React
+> A carefully crafted time picker for React
 
 ## Install
 
