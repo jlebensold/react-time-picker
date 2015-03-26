@@ -10,7 +10,6 @@ var toUpperFirst = require('./toUpperFirst')
 
 var hasTouch = require('has-touch')
 
-console.log(hasTouch)
 var EVENT_NAMES = require('react-event-names')
 
 var WHITESPACE = '\u00a0'

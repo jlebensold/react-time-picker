@@ -66,7 +66,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var hasTouch = __webpack_require__(10)
 
-	console.log(hasTouch)
 	var EVENT_NAMES = __webpack_require__(11)
 
 	var WHITESPACE = '\u00a0'
