@@ -120,7 +120,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				minuteStep: null,
 				secondStep: null,
 
-				stepDelay:60,
+				stepDelay: 60,
 				showArrows: true,
 
 				defaultStyle: {
@@ -272,7 +272,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			target.addEventListener(eventName, this.onWindowClick)
 
-			this.startInterval(props, dir, name)
+			this.onArrowAction(props, dir, name)
+
+			this.timeoutId = setTimeout(function(){
+				this.startInterval(props, dir, name)
+			}.bind(this), props.stepDelay)
 		},
 
 		onWindowClick: function(){
@@ -280,6 +284,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		stopInterval: function(){
+			clearTimeout(this.timeoutId)
 			clearInterval(this.intervalId)
 		},
 

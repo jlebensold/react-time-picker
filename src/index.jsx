@@ -64,7 +64,7 @@ module.exports = React.createClass({
 			minuteStep: null,
 			secondStep: null,
 
-			stepDelay:60,
+			stepDelay: 60,
 			showArrows: true,
 
 			defaultStyle: {
@@ -216,7 +216,11 @@ module.exports = React.createClass({
 
 		target.addEventListener(eventName, this.onWindowClick)
 
-		this.startInterval(props, dir, name)
+		this.onArrowAction(props, dir, name)
+
+		this.timeoutId = setTimeout(function(){
+			this.startInterval(props, dir, name)
+		}.bind(this), props.stepDelay)
 	},
 
 	onWindowClick: function(){
@@ -224,6 +228,7 @@ module.exports = React.createClass({
 	},
 
 	stopInterval: function(){
+		clearTimeout(this.timeoutId)
 		clearInterval(this.intervalId)
 	},
 

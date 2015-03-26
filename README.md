@@ -122,6 +122,7 @@ Styles for time input fields
  * arrowUpOverStyle
  * arrowDownOverStyle
  * arrowFactory
+ * stepDelay: Number - defaults to 60. The amount of milliseconds between amount increments when mouse is down on an arrow
  * stopChangePropagation: Boolean - defaults to true. Stops the propagation of the `change` event on the inputs contained in the time picker. Needed so your `onChange` function will not get called multiple times, and with different arguments. Only modify this if you know what you're doing
   * normalizeStyle: Boolean - defaults to true. Uses [react-style-normalizer](https://www.npmjs.com/package/react-style-normalizer) to prefix style names when needed. In this case, all style props are prefixed (style, inputStyle, hourStyle, etc... )
 
