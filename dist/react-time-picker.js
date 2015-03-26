@@ -63,18 +63,22 @@ return /******/ (function(modules) { // webpackBootstrap
 	var parseTime    = __webpack_require__(2)
 	var updateTime   = __webpack_require__(3)
 	var toUpperFirst = __webpack_require__(4)
-	var timeToString = __webpack_require__(5)
 
 	var hasTouch = __webpack_require__(10)
+
+	console.log(hasTouch)
 	var EVENT_NAMES = __webpack_require__(11)
 
 	var WHITESPACE = '\u00a0'
 
 	function emptyFn(){}
 
-	var twoDigits     = __webpack_require__(6)
-	var getFormatInfo = __webpack_require__(7)
-	var format        = __webpack_require__(8)
+	var twoDigits     = __webpack_require__(5)
+	var getFormatInfo = __webpack_require__(6)
+	var format        = __webpack_require__(7)
+	var formatTime    = __webpack_require__(8)
+
+	function identity(v){ return v }
 
 	module.exports = React.createClass({
 
@@ -92,14 +96,20 @@ return /******/ (function(modules) { // webpackBootstrap
 					minute  : null,
 					second  : null,
 					meridian: null
+				},
+				overArrow: {
+					hour: null,
+					minute: null,
+					second: null,
+					meridian: null
 				}
 			}
 		},
 
 		getDefaultProps: function() {
 			return {
+				normalizeStyle: true,
 				stopChangePropagation: true,
-
 
 				//makes 15:78 be converted to 15:00, and not to 16:18
 				strict: true,
@@ -107,50 +117,75 @@ return /******/ (function(modules) { // webpackBootstrap
 
 				step: 1,
 				hourStep: null,
-				minuteStep: 1,
-				secondStep: 20,
+				minuteStep: null,
+				secondStep: null,
 
 				stepDelay:60,
 				showArrows: true,
 
 				defaultStyle: {
 					border: '1px solid gray',
-					padding: 20,
+					padding: 10,
 					display: 'inline-flex',
 					alignItems: 'center',
 					boxSizing: 'border-box',
 					flexFlow: 'row',
 					width: 200
 				},
+
 				defaultArrowStyle: {
 					cursor: 'pointer',
-					userSelect: 'none'
-				},
-				defaultBoxStyle: {
-					boxSizing: 'border-box',
-					display: 'flex',
-					flexFlow: 'column',
-					alignItems: 'center'
-				},
-				defaultInputStyle: {
-					boxSizing: 'border-box',
-					width: '100%',
+					userSelect: 'none',
+					display: 'inline-block',
+					alignSelf: 'stretch',
 					textAlign: 'center'
 				},
+
+				defaultArrowOverStyle: {
+					background: 'rgb(229, 229, 229)'
+				},
+
+				defaultArrowUpOverStyle: null,
+				defaultArrowDownOverStyle: null,
+
+				defaultArrowUpStyle: {
+					marginBottom: 5
+				},
+
+				defaultArrowDownStyle: {
+					marginTop: 5
+				},
+
+				defaultBoxStyle: {
+					boxSizing : 'border-box',
+					display   : 'flex',
+					flexFlow  : 'column',
+					alignItems: 'center'
+				},
+
+				defaultInputStyle: {
+					boxSizing: 'border-box',
+					width    : '100%',
+					textAlign: 'center'
+				},
+
 				defaultSeparatorStyle: {
 					flex: 'none'
 				},
+
 				defaultMeridianInputStyle: {
 					cursor: 'pointer'
 				},
+
 				defaultMeridianInputProps: {
 					readOnly: true
 				},
-				format: twoDigits,
-				formatHour: null,
-				formatMinute: null,
-				formatSecond: null,
-				formatMeridian: null,
+
+				// format: 'HHmmssa',
+				renderHour: null,
+				renderMinute: null,
+				renderSecond: null,
+				renderMeridian: null,
 
 				defaultArrowFactory: React.DOM.span,
 
@@ -166,12 +201,20 @@ return /******/ (function(modules) { // webpackBootstrap
 				secondInputFactory: null,
 				meridianInputFactory: null,
 
-				timeToString: timeToString
+				timeToString: formatTime
 			}
+		},
+
+		normalize: function(style) {
+			return normalize(style)
 		},
 
 		render: function(){
 			var props = this.prepareProps(this.props, this.state)
+
+			if (!props.normalizeStyle){
+				this.normalize = identity
+			}
 
 			var hour     = this.renderHour(props)
 			var minute   = this.renderMinute(props)
@@ -195,6 +238,24 @@ return /******/ (function(modules) { // webpackBootstrap
 			)
 		},
 
+		onArrowMouseEnter: function(props, dir, name, event) {
+			var overArrow = this.state.overArrow
+
+			Object.keys(overArrow).forEach(function(key){
+				overArrow[key] = null
+			})
+
+			overArrow[name] = dir
+
+			this.setState({})
+		},
+
+		onArrowMouseLeave: function(props, dir, name, event) {
+			this.state.overArrow[name] = null
+
+			this.setState({})
+		},
+
 		onArrowMouseDown: function(props, dir, name, event){
 
 			if (name == 'meridian'){
@@ -205,7 +266,9 @@ return /******/ (function(modules) { // webpackBootstrap
 			var target = hasTouch?
 			                event.target:
 			                window
-			var eventName = hasTouch? 'touchend': 'click'
+			var eventName = hasTouch?
+								'touchend':
+								'click'
 
 			target.addEventListener(eventName, this.onWindowClick)
 
@@ -270,7 +333,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			var oldValue = time[name]
 			var newValue = oldValue + amount
 
-			this.setValue(time)
+			// this.setValue(time)
 			this.updateValue(name, newValue)
 		},
 
@@ -297,30 +360,35 @@ return /******/ (function(modules) { // webpackBootstrap
 				})
 			}
 
-			;(this.props.onChange || emptyFn)(this.props.timeToString(time), assign({}, time))
+			;(this.props.onChange || emptyFn)(this.props.timeToString(time, this.props.format), assign({}, time))
 		},
 
 		format: function(props, name, value){
-			var formatFn
+			var renderFn
 
 			if (arguments.length < 3){
 				value = props.time[name]
 			}
 
 			if (name != 'meridian'){
-				formatFn = props['format' + toUpperFirst(name)]
+				renderFn = props['render' + toUpperFirst(name)]
 			} else {
-				formatFn = props.formatMeridian
+				renderFn = props.renderMeridian
 			}
 
-			if (!formatFn && typeof props.format == 'string'){
-				formatFn = function(value, name){
-					return format(name, value, props.formatInfo)
+			if (!renderFn && typeof props.format == 'string'){
+				var formatInfo = this.formatInfo
+				renderFn = function(value, name){
+					return format(name, value, formatInfo)
 				}
 			}
 
-			if (typeof formatFn == 'function'){
-				value = formatFn(value, name, props)
+			if (!renderFn){
+				renderFn = twoDigits
+			}
+
+			if (typeof renderFn == 'function'){
+				value = renderFn(value, name, props)
 			}
 
 			return value
@@ -344,25 +412,58 @@ return /******/ (function(modules) { // webpackBootstrap
 			var arrowDown
 
 			if (props.showArrows){
+				var overArrow = this.state.overArrow[name]
+
+				var arrowUpStyle = props.arrowUpStyle
+
+				if (overArrow == 1){
+					arrowUpStyle = assign({},
+										props.arrowUpStyle,
+										props.defaultArrowOverStyle,
+										props.defaultArrowUpOverStyle,
+										props.arrowOverStyle,
+										props.arrowUpOverStyle
+									)
+				}
+
 				var arrowUpProps = {
-					style      : props.arrowUpStyle,
-					children   : '▴'
+					mouseOver: overArrow == 1,
+					style    : arrowUpStyle,
+					children : '▲'
 				}
 
 				arrowUpProps[EVENT_NAMES.onMouseDown] = this.onArrowMouseDown.bind(this, props, 1, name)
+				arrowUpProps.onMouseEnter = this.onArrowMouseEnter.bind(this, props, 1, name)
+				arrowUpProps.onMouseLeave = this.onArrowMouseLeave.bind(this, props, 1, name)
+
+				var arrowDownStyle = props.arrowDownStyle
+
+				if (overArrow == -1){
+					arrowDownStyle = assign({},
+										props.arrowDownStyle,
+										props.defaultArrowOverStyle,
+										props.defaultArrowDownOverStyle,
+										props.arrowOverStyle,
+										props.arrowDownOverStyle
+									)
+				}
 
 				var arrowDownProps = {
-					style      : props.arrowDownStyle,
-					children   : '▾'
+					mouseOver: overArrow == -1,
+					style    : arrowDownStyle,
+					children : '▼'
 				}
 
 				arrowDownProps[EVENT_NAMES.onMouseDown] = this.onArrowMouseDown.bind(this, props, -1, name)
+				arrowDownProps.onMouseEnter = this.onArrowMouseEnter.bind(this, props, -1, name)
+				arrowDownProps.onMouseLeave = this.onArrowMouseLeave.bind(this, props, -1, name)
 
 				var defaultArrowFactory = props.defaultArrowFactory
 				var arrowUpFactory = props.arrowUpFactory || props.arrowFactory || defaultArrowFactory
 				var arrowDownFactory = props.arrowDownFactory || props.arrowFactory || defaultArrowFactory
 
 				arrowUp = arrowUpFactory(arrowUpProps)
+
 				if (arrowUp === undefined){
 					arrowUp = defaultArrowFactory(arrowUpProps)
 				}
@@ -377,7 +478,10 @@ return /******/ (function(modules) { // webpackBootstrap
 			var inputFactory = props[name + 'InputFactory'] || props.inputFactory || defaultInputFactory
 
 			var defaultInputProps = props['default' + upperName + 'InputProps']
-			var inputProps = assign({}, defaultInputProps, {
+			var inputProps        = props[name + 'InputProps']
+
+			var inputProps = assign({}, props.inputProps, defaultInputProps, inputProps, {
+				timeName: name,
 				style   : inputStyle,
 				value   : value,
 				onFocus : this.handleInputFocus.bind(this, props, name),
@@ -390,6 +494,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 
 			var input = inputFactory(inputProps)
+
 			if (input === undefined){
 				input = defaultInputFactory(inputProps)
 			}
@@ -408,6 +513,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			focused[name] = {
 				value: this.format(props, name)
 			}
+
+			this.stopInterval()
 
 			this.setState({})
 		},
@@ -435,24 +542,36 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		getTime: function(){
+			var strict = this.props.strict
+
+			var formatInfo = this.formatInfo = getFormatInfo(this.props.format)
+
 			return parseTime(this.getValue(), {
-				strict: this.props.strict
+				strict: strict,
+
+				hour    : formatInfo.hour,
+				minute  : formatInfo.minute,
+				second  : formatInfo.second,
+				meridian: formatInfo.meridian
 			})
 		},
 
 		prepareTime: function(props, state) {
-			var timeValue = this.getTime()
+			var timeValue  = this.getTime()
+			var formatInfo = this.props.format?
+								this.formatInfo:
+								null
 
-			props.showSecond = props.formatInfo?
-									props.formatInfo.second.specified:
+			props.showSecond = formatInfo?
+									formatInfo.second.specified:
 									timeValue.second !== undefined
 
-			props.showMinute = props.formatInfo?
-									props.formatInfo.minute.specified:
+			props.showMinute = formatInfo?
+									formatInfo.minute.specified:
 									timeValue.minute !== undefined
 
-			props.withMeridian = props.formatInfo?
-									props.formatInfo.meridian.specified:
+			props.withMeridian = formatInfo?
+									formatInfo.meridian.specified:
 									timeValue.meridian != null
 
 			return timeValue
@@ -491,7 +610,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		prepareProps: function(thisProps, state) {
 			var props = assign({}, thisProps)
 
-			props.formatInfo = getFormatInfo(props.format)
 			this.time = props.time = this.prepareTime(props, state)
 			this.prepareStyles(props, state)
 
@@ -512,16 +630,16 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		prepareStyle: function(props, state) {
-			return normalize(assign({}, props.defaultStyle, props.style))
+			return this.normalize(assign({}, props.defaultStyle, props.style))
 		},
 
 		prepareSeparatorStyle: function(props, state) {
-			return normalize(assign({}, props.defaultSeparatorStyle, props.separatorStyle))
+			return this.normalize(assign({}, props.defaultSeparatorStyle, props.separatorStyle))
 		},
 
 		prepareArrowStyles: function(props, state) {
-			props.arrowUpStyle = normalize(assign({}, props.defaultArrowStyle, props.defaultArrowUpStyle, props.arrowUpStyle))
-			props.arrowDownStyle = normalize(assign({}, props.defaultArrowStyle, props.defaultArrowDownStyle, props.arrowDownStyle))
+			props.arrowUpStyle = this.normalize(assign({}, props.defaultArrowStyle, props.defaultArrowUpStyle, props.arrowStyle, props.arrowUpStyle))
+			props.arrowDownStyle = this.normalize(assign({}, props.defaultArrowStyle, props.defaultArrowDownStyle, props.arrowStyle, props.arrowDownStyle))
 		},
 
 		prepareHourStyles: function(props, state) {
@@ -530,11 +648,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		prepareHourStyle: function(props, state) {
-			return normalize(assign({}, props.defaultBoxStyle, props.defaultHourStyle, props.hourStyle))
+			return this.normalize(assign({}, props.defaultBoxStyle, props.defaultHourStyle, props.boxStyle, props.hourStyle))
 		},
 
 		prepareHourInputStyle: function(props, state) {
-			return normalize(assign({}, props.defaultInputStyle, props.defaultHourInputStyle, props.hourInputStyle))
+			return this.normalize(assign({}, props.defaultInputStyle, props.defaultHourInputStyle, props.inputStyle, props.hourInputStyle))
 		},
 
 		prepareMinuteStyles: function(props, state) {
@@ -543,11 +661,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		prepareMinuteStyle: function(props, state) {
-			return normalize(assign({}, props.defaultBoxStyle, props.defaultMinuteStyle, props.minuteStyle))
+			return this.normalize(assign({}, props.defaultBoxStyle, props.defaultMinuteStyle, props.boxStyle, props.minuteStyle))
 		},
 
 		prepareMinuteInputStyle: function(props, state) {
-			return normalize(assign({}, props.defaultInputStyle, props.defaultMinuteInputStyle, props.minuteInputStyle))
+			return this.normalize(assign({}, props.defaultInputStyle, props.defaultMinuteInputStyle, props.inputStyle, props.minuteInputStyle))
 		},
 
 		prepareSecondStyles: function(props, state) {
@@ -558,11 +676,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		prepareSecondStyle: function(props, state) {
-			return normalize(assign({}, props.defaultBoxStyle, props.defaultSecondStyle, props.secondStyle))
+			return this.normalize(assign({}, props.defaultBoxStyle, props.defaultSecondStyle, props.boxStyle, props.secondStyle))
 		},
 
 		prepareSecondInputStyle: function(props, state) {
-			return normalize(assign({}, props.defaultInputStyle, props.defaultSecondInputStyle, props.secondInputStyle))
+			return this.normalize(assign({}, props.defaultInputStyle, props.defaultSecondInputStyle, props.inputStyle, props.secondInputStyle))
 		},
 
 		prepareMeridianStyles: function(props, state){
@@ -573,11 +691,11 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		prepareMeridianStyle: function(props, state) {
-			return normalize(assign({}, props.defaultBoxStyle, props.defaultMeridianStyle, props.meridianStyle))
+			return this.normalize(assign({}, props.defaultBoxStyle, props.defaultMeridianStyle, props.boxStyle, props.meridianStyle))
 		},
 
 		prepareMeridianInputStyle: function(props, state) {
-			return normalize(assign({}, props.defaultInputStyle, props.defaultMeridianInputStyle, props.meridianInputStyle))
+			return this.normalize(assign({}, props.defaultInputStyle, props.defaultMeridianInputStyle, props.inputStyle, props.meridianInputStyle))
 		}
 	})
 
@@ -620,7 +738,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		value = value || ''
 
 		if (typeof value == 'string'){
-			value = parseTime(value)
+			value = parseTime(value, config)
 		}
 
 		var definedParts = {}
@@ -714,36 +832,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	function twoDigits(value){
-		return value < 10?
-				'0' + value:
-				value
-	}
-
-	module.exports = function(time){
-		var str = twoDigits(time.hour)
-
-		if (time.minute != null){
-		 	str += ':' + twoDigits(time.minute)
-		}
-
-		if (time.second != null){
-			str += ':' + twoDigits(time.second)
-		}
-
-		if (time.meridian){
-			str += ' ' + time.meridian
-		}
-
-		return str
-	}
-
-/***/ },
-/* 6 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
 
 	module.exports = function twoDigits(value){
 		return value < 10?
@@ -752,7 +840,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 7 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -842,7 +930,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	module.exports = function(format){
 
 		if (typeof format != 'string'){
-			return
+			return {
+				hour    : {specified: false},
+				minute  : {specified: false},
+				second  : {specified: false},
+				meridian: {specified: false}
+			}
 		}
 
 		return {
@@ -855,13 +948,13 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
-/* 8 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var twoDigits     = __webpack_require__(6)
-	var getFormatInfo = __webpack_require__(7)
+	var twoDigits     = __webpack_require__(5)
+	var getFormatInfo = __webpack_require__(6)
 
 	module.exports = function(name, value, formatOrInfo){
 
@@ -872,12 +965,12 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		if (!formatInfo){
-			return ''
+			return
 		}
 
 		var info = formatInfo[name]
 
-		if (name === 'meridian' && info.specified){
+		if (value && name === 'meridian' && info.specified){
 			return info.uppercase? value.toUpperCase(): value.toLowerCase()
 		}
 
@@ -887,6 +980,78 @@ return /******/ (function(modules) { // webpackBootstrap
 						value
 					:
 					''
+	}
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var twoDigits      = __webpack_require__(5)
+	var getFormatInfo  = __webpack_require__(6)
+	var formatFunction = __webpack_require__(7)
+
+	function identity(x){
+		return x
+	}
+
+	module.exports = function(time, format){
+
+		var hourFormat     = twoDigits
+		var minuteFormat   = twoDigits
+		var secondFormat   = twoDigits
+		var meridianFormat = identity
+
+		if (format){
+			var formatInfo = typeof format == 'string'? getFormatInfo(format): format
+
+			if (formatInfo.hour.specified){
+				hourFormat = function(){
+					return formatFunction('hour', time.hour, formatInfo)
+				}
+			}
+
+			if (formatInfo.minute.specified){
+				minuteFormat = function(){
+					return formatFunction('minute', time.minute, formatInfo)
+				}
+			}
+
+			if (formatInfo.second.specified){
+				secondFormat = function(){
+					return formatFunction('second', time.second, formatInfo)
+				}
+			}
+
+			if (formatInfo.meridian.specified){
+				meridianFormat = function(){
+					return formatFunction('meridian', time.meridian, formatInfo)
+				}
+			}
+		}
+
+		var result = []
+
+		if (time.hour != null){
+			result.push(hourFormat(time.hour))
+		}
+
+		if (time.minute != null){
+		 	result.push(minuteFormat(time.minute))
+		}
+
+		if (time.second != null){
+			result.push(secondFormat(time.second))
+		}
+
+		var str = result.join(':')
+
+		if (time.meridian){
+			str += ' ' + meridianFormat(time.meridian)
+		}
+
+		return str
 	}
 
 /***/ },
@@ -994,6 +1159,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	var RESULT = function(style){
+
 		var k
 		var item
 		var result = {}
@@ -1032,8 +1198,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var getStylePrefixed = __webpack_require__(19)
-	var properties       = __webpack_require__(20)
+	var getStylePrefixed = __webpack_require__(18)
+	var properties       = __webpack_require__(19)
 
 	module.exports = function(key, value){
 
@@ -1071,7 +1237,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var getCssPrefixedValue = __webpack_require__(18)
+	var getCssPrefixedValue = __webpack_require__(20)
 
 	module.exports = function(target){
 		target.plugins = target.plugins || [
@@ -1107,7 +1273,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var assign = __webpack_require__(34)
+	var assign = __webpack_require__(30)
 	var defaults = __webpack_require__(21)
 
 	function trim(str){
@@ -1120,25 +1286,25 @@ return /******/ (function(modules) { // webpackBootstrap
 	var validMeridian = __webpack_require__(25)
 
 	function getHour(value, config){
-		if (validHour(value, config)){
+		if (validHour(value, assign({}, config, config.hour))){
 			return value * 1
 		}
 	}
 
-	function getMinute(value){
-		if (validMinute(value)){
+	function getMinute(value, config){
+		if (validMinute(value, assign({}, config, config.minute))){
 			return value * 1
 		}
 	}
 
-	function getSecond(value){
-		if (validSecond(value)){
+	function getSecond(value, config){
+		if (validSecond(value, assign({}, config, config.second))){
 			return value * 1
 		}
 	}
 
-	function getMeridian(value){
-		if (validMeridian(value)){
+	function getMeridian(value, config){
+		if (validMeridian(value, assign({}, config, config.meridian))){
 			return value
 		}
 	}
@@ -1161,7 +1327,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	function parseLast(str, partName, config){
-		var withMeridian = config && config.meridian
+		config = assign({}, config, config? config[partName]: null)
+
+		var withMeridian = config.meridian
 
 		var parts = str.split(' ').map(trim)
 		var getFn = get(partName)
@@ -1184,7 +1352,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		if (withMeridian){
-			meridian = getMeridian(parts[1])
+			meridian = getMeridian(parts[1], config)
 
 			if (meridian === undefined){
 				result.invalid.push({
@@ -1240,7 +1408,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		if (parts.length == 3){
 			//hh:mm:ss am
 			hour   = getHour(parts[0], config)
-			minute = getMinute(parts[1])
+			minute = getMinute(parts[1], config)
 
 			if (hour === undefined){
 				invalids.push({
@@ -1297,64 +1465,18 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var getPrefix     = __webpack_require__(30)
-	var forcePrefixed = __webpack_require__(31)
-	var el            = __webpack_require__(32)
+	var toUpperFirst = __webpack_require__(31)
+	var getPrefix    = __webpack_require__(32)
+	var el           = __webpack_require__(33)
 
 	var MEMORY = {}
-	var STYLE = el.style
+	var STYLE
+	var ELEMENT
 
 	module.exports = function(key, value){
 
-	    var k = key + ': ' + value
-
-	    if (MEMORY[k]){
-	        return MEMORY[k]
-	    }
-
-	    var prefix
-	    var prefixed
-	    var prefixedValue
-
-	    if (!(key in STYLE)){
-
-	        prefix = getPrefix('appearance')
-
-	        if (prefix){
-	            prefixed = forcePrefixed(key, value)
-
-	            prefixedValue = '-' + prefix.toLowerCase() + '-' + value
-
-	            if (prefixed in STYLE){
-	                el.style[prefixed] = ''
-	                el.style[prefixed] = prefixedValue
-
-	                if (el.style[prefixed] !== ''){
-	                    value = prefixedValue
-	                }
-	            }
-	        }
-	    }
-
-	    MEMORY[k] = value
-
-	    return value
-	}
-
-/***/ },
-/* 19 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var toUpperFirst = __webpack_require__(33)
-	var getPrefix    = __webpack_require__(30)
-	var el           = __webpack_require__(32)
-
-	var MEMORY = {}
-	var STYLE = el.style
-
-	module.exports = function(key, value){
+	    ELEMENT = ELEMENT || el()
+	    STYLE   = STYLE   || ELEMENT.style
 
 	    var k = key// + ': ' + value
 
@@ -1384,7 +1506,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
-/* 20 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -1424,6 +1546,60 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 /***/ },
+/* 20 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var getPrefix     = __webpack_require__(32)
+	var forcePrefixed = __webpack_require__(34)
+	var el            = __webpack_require__(33)
+
+	var MEMORY = {}
+	var STYLE
+	var ELEMENT
+
+	module.exports = function(key, value){
+
+	    ELEMENT = ELEMENT || el()
+	    STYLE   = STYLE   ||  ELEMENT.style
+
+	    var k = key + ': ' + value
+
+	    if (MEMORY[k]){
+	        return MEMORY[k]
+	    }
+
+	    var prefix
+	    var prefixed
+	    var prefixedValue
+
+	    if (!(key in STYLE)){
+
+	        prefix = getPrefix('appearance')
+
+	        if (prefix){
+	            prefixed = forcePrefixed(key, value)
+
+	            prefixedValue = '-' + prefix.toLowerCase() + '-' + value
+
+	            if (prefixed in STYLE){
+	                ELEMENT.style[prefixed] = ''
+	                ELEMENT.style[prefixed] = prefixedValue
+
+	                if (ELEMENT.style[prefixed] !== ''){
+	                    value = prefixedValue
+	                }
+	            }
+	        }
+	    }
+
+	    MEMORY[k] = value
+
+	    return value
+	}
+
+/***/ },
 /* 21 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -1441,9 +1617,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var validNumber = __webpack_require__(35)
+	var assign      = __webpack_require__(30)
 
 	module.exports = function validHour(value, config){
-		var meridian = config && config.meridian
+		config = assign({}, config)
+
+		config.twoDigits = config.len == 2
+
+		var meridian = config.meridian
 
 		if (validNumber(value, config)){
 			value *= 1
@@ -1465,8 +1646,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var validNumber = __webpack_require__(35)
+	var assign      = __webpack_require__(30)
 
 	module.exports = function validMinute(value, config){
+
+		config = assign({}, config)
+		config.twoDigits = config.len == 2
 
 		if (validNumber(value, config)){
 			value *= 1
@@ -1484,8 +1669,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var validMinute = __webpack_require__(23)
+	var assign      = __webpack_require__(30)
 
 	module.exports = function validSecond(value, config){
+		config = assign({}, config)
+		config.twoDigits = config.len == 2
+
 		return validMinute(value, config)
 	}
 
@@ -1565,7 +1754,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	var isValidPart = __webpack_require__(26)
-	var assign = __webpack_require__(34)
+	var assign = __webpack_require__(30)
 
 	module.exports = function isValidTime(time, config){
 
@@ -1597,7 +1786,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var assign      = __webpack_require__(34)
+	var assign      = __webpack_require__(30)
 	var isValidNumber = __webpack_require__(35)
 	var isValidPart = __webpack_require__(26)
 	var isValidTime = __webpack_require__(27)
@@ -1677,7 +1866,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		}
 
 		var overflowHourToMeridian = !config || config.overflowHourToMeridian !== false
-		var meridian = values.meridian || config && config.meridian
+		var meridian = values.meridian || config && config.meridian === true
 		var limit    = meridian? 12: 23
 		var plusOne  = meridian? 12: 24
 
@@ -1785,96 +1974,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
-	var toUpperFirst = __webpack_require__(33)
-	var prefixes     = ["ms", "Moz", "Webkit", "O"]
-
-	var el = __webpack_require__(32)
-
-	var PREFIX
-
-	module.exports = function(key){
-
-		if (PREFIX){
-			return PREFIX
-		}
-
-		var i = 0
-		var len = prefixes.length
-		var tmp
-		var prefix
-
-		for (; i < len; i++){
-			prefix = prefixes[i]
-			tmp = prefix + toUpperFirst(key)
-
-			if (typeof el.style[tmp] != 'undefined'){
-				return PREFIX = prefix
-			}
-		}
-	}
-
-/***/ },
-/* 31 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	var toUpperFirst = __webpack_require__(33)
-	var getPrefix    = __webpack_require__(30)
-	var properties   = __webpack_require__(20)
-
-	/**
-	 * Returns the given key prefixed, if the property is found in the prefixProps map.
-	 *
-	 * Does not test if the property supports the given value unprefixed.
-	 * If you need this, use './getPrefixed' instead
-	 */
-	module.exports = function(key, value){
-
-		if (!properties[key]){
-			return key
-		}
-
-		var prefix = getPrefix(key)
-
-		return prefix?
-					prefix + toUpperFirst(key):
-					key
-	}
-
-/***/ },
-/* 32 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
-
-	var el
-
-	if(!!global.document){
-	  	el = global.document.createElement('div')
-	}
-
-	module.exports = el
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
-
-/***/ },
-/* 33 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
-	module.exports = function(str){
-		return str?
-				str.charAt(0).toUpperCase() + str.slice(1):
-				''
-	}
-
-/***/ },
-/* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-
 	function ToObject(val) {
 		if (val == null) {
 			throw new TypeError('Object.assign cannot be called with null or undefined');
@@ -1902,12 +2001,114 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ },
+/* 31 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	module.exports = function(str){
+		return str?
+				str.charAt(0).toUpperCase() + str.slice(1):
+				''
+	}
+
+/***/ },
+/* 32 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var toUpperFirst = __webpack_require__(31)
+	var prefixes     = ["ms", "Moz", "Webkit", "O"]
+
+	var el = __webpack_require__(33)
+
+	var ELEMENT
+	var PREFIX
+
+	module.exports = function(key){
+
+		if (PREFIX !== undefined){
+			return PREFIX
+		}
+
+		ELEMENT = ELEMENT || el()
+
+		var i = 0
+		var len = prefixes.length
+		var tmp
+		var prefix
+
+		for (; i < len; i++){
+			prefix = prefixes[i]
+			tmp = prefix + toUpperFirst(key)
+
+			if (typeof ELEMENT.style[tmp] != 'undefined'){
+				return PREFIX = prefix
+			}
+		}
+
+		return PREFIX
+	}
+
+/***/ },
+/* 33 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
+
+	var el
+
+	module.exports = function(){
+
+		if(!el && !!global.document){
+		  	el = global.document.createElement('div')
+		}
+
+		if (!el){
+			el = {style: {}}
+		}
+
+		return el
+	}
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+/* 34 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var toUpperFirst = __webpack_require__(31)
+	var getPrefix    = __webpack_require__(32)
+	var properties   = __webpack_require__(19)
+
+	/**
+	 * Returns the given key prefixed, if the property is found in the prefixProps map.
+	 *
+	 * Does not test if the property supports the given value unprefixed.
+	 * If you need this, use './getPrefixed' instead
+	 */
+	module.exports = function(key, value){
+
+		if (!properties[key]){
+			return key
+		}
+
+		var prefix = getPrefix(key)
+
+		return prefix?
+					prefix + toUpperFirst(key):
+					key
+	}
+
+/***/ },
 /* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
 
-	var assign   = __webpack_require__(34)
+	var assign   = __webpack_require__(30)
 	var defaults = __webpack_require__(21)
 
 	module.exports = function validNumber(n, config){

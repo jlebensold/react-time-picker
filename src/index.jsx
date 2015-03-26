@@ -9,6 +9,8 @@ var updateTime   = require('./updateTime')
 var toUpperFirst = require('./toUpperFirst')
 
 var hasTouch = require('has-touch')
+
+console.log(hasTouch)
 var EVENT_NAMES = require('react-event-names')
 
 var WHITESPACE = '\u00a0'
@@ -19,6 +21,8 @@ var twoDigits     = require('./twoDigits')
 var getFormatInfo = require('./getFormatInfo')
 var format        = require('./format')
 var formatTime    = require('./formatTime')
+
+function identity(v){ return v }
 
 module.exports = React.createClass({
 
@@ -36,12 +40,19 @@ module.exports = React.createClass({
 				minute  : null,
 				second  : null,
 				meridian: null
+			},
+			overArrow: {
+				hour: null,
+				minute: null,
+				second: null,
+				meridian: null
 			}
 		}
 	},
 
 	getDefaultProps: function() {
 		return {
+			normalizeStyle: true,
 			stopChangePropagation: true,
 
 			//makes 15:78 be converted to 15:00, and not to 16:18
@@ -50,46 +61,71 @@ module.exports = React.createClass({
 
 			step: 1,
 			hourStep: null,
-			minuteStep: 1,
-			secondStep: 1,
+			minuteStep: null,
+			secondStep: null,
 
 			stepDelay:60,
 			showArrows: true,
 
 			defaultStyle: {
 				border: '1px solid gray',
-				padding: 20,
+				padding: 10,
 				display: 'inline-flex',
 				alignItems: 'center',
 				boxSizing: 'border-box',
 				flexFlow: 'row',
 				width: 200
 			},
+
 			defaultArrowStyle: {
 				cursor: 'pointer',
-				userSelect: 'none'
-			},
-			defaultBoxStyle: {
-				boxSizing: 'border-box',
-				display: 'flex',
-				flexFlow: 'column',
-				alignItems: 'center'
-			},
-			defaultInputStyle: {
-				boxSizing: 'border-box',
-				width: '100%',
+				userSelect: 'none',
+				display: 'inline-block',
+				alignSelf: 'stretch',
 				textAlign: 'center'
 			},
+
+			defaultArrowOverStyle: {
+				background: 'rgb(229, 229, 229)'
+			},
+
+			defaultArrowUpOverStyle: null,
+			defaultArrowDownOverStyle: null,
+
+			defaultArrowUpStyle: {
+				marginBottom: 5
+			},
+
+			defaultArrowDownStyle: {
+				marginTop: 5
+			},
+
+			defaultBoxStyle: {
+				boxSizing : 'border-box',
+				display   : 'flex',
+				flexFlow  : 'column',
+				alignItems: 'center'
+			},
+
+			defaultInputStyle: {
+				boxSizing: 'border-box',
+				width    : '100%',
+				textAlign: 'center'
+			},
+
 			defaultSeparatorStyle: {
 				flex: 'none'
 			},
+
 			defaultMeridianInputStyle: {
 				cursor: 'pointer'
 			},
+
 			defaultMeridianInputProps: {
 				readOnly: true
 			},
-			// format: 'HH:mm:ss',
+
+			// format: 'HHmmssa',
 			renderHour: null,
 			renderMinute: null,
 			renderSecond: null,
@@ -113,8 +149,16 @@ module.exports = React.createClass({
 		}
 	},
 
+	normalize: function(style) {
+		return normalize(style)
+	},
+
 	render: function(){
 		var props = this.prepareProps(this.props, this.state)
+
+		if (!props.normalizeStyle){
+			this.normalize = identity
+		}
 
 		var hour     = this.renderHour(props)
 		var minute   = this.renderMinute(props)
@@ -138,6 +182,24 @@ module.exports = React.createClass({
 		</div>
 	},
 
+	onArrowMouseEnter: function(props, dir, name, event) {
+		var overArrow = this.state.overArrow
+
+		Object.keys(overArrow).forEach(function(key){
+			overArrow[key] = null
+		})
+
+		overArrow[name] = dir
+
+		this.setState({})
+	},
+
+	onArrowMouseLeave: function(props, dir, name, event) {
+		this.state.overArrow[name] = null
+
+		this.setState({})
+	},
+
 	onArrowMouseDown: function(props, dir, name, event){
 
 		if (name == 'meridian'){
@@ -148,7 +210,9 @@ module.exports = React.createClass({
 		var target = hasTouch?
 		                event.target:
 		                window
-		var eventName = hasTouch? 'touchend': 'click'
+		var eventName = hasTouch?
+							'touchend':
+							'click'
 
 		target.addEventListener(eventName, this.onWindowClick)
 
@@ -292,25 +356,58 @@ module.exports = React.createClass({
 		var arrowDown
 
 		if (props.showArrows){
+			var overArrow = this.state.overArrow[name]
+
+			var arrowUpStyle = props.arrowUpStyle
+
+			if (overArrow == 1){
+				arrowUpStyle = assign({},
+									props.arrowUpStyle,
+									props.defaultArrowOverStyle,
+									props.defaultArrowUpOverStyle,
+									props.arrowOverStyle,
+									props.arrowUpOverStyle
+								)
+			}
+
 			var arrowUpProps = {
-				style      : props.arrowUpStyle,
-				children   : '▴'
+				mouseOver: overArrow == 1,
+				style    : arrowUpStyle,
+				children : '▲'
 			}
 
 			arrowUpProps[EVENT_NAMES.onMouseDown] = this.onArrowMouseDown.bind(this, props, 1, name)
+			arrowUpProps.onMouseEnter = this.onArrowMouseEnter.bind(this, props, 1, name)
+			arrowUpProps.onMouseLeave = this.onArrowMouseLeave.bind(this, props, 1, name)
+
+			var arrowDownStyle = props.arrowDownStyle
+
+			if (overArrow == -1){
+				arrowDownStyle = assign({},
+									props.arrowDownStyle,
+									props.defaultArrowOverStyle,
+									props.defaultArrowDownOverStyle,
+									props.arrowOverStyle,
+									props.arrowDownOverStyle
+								)
+			}
 
 			var arrowDownProps = {
-				style      : props.arrowDownStyle,
-				children   : '▾'
+				mouseOver: overArrow == -1,
+				style    : arrowDownStyle,
+				children : '▼'
 			}
 
 			arrowDownProps[EVENT_NAMES.onMouseDown] = this.onArrowMouseDown.bind(this, props, -1, name)
+			arrowDownProps.onMouseEnter = this.onArrowMouseEnter.bind(this, props, -1, name)
+			arrowDownProps.onMouseLeave = this.onArrowMouseLeave.bind(this, props, -1, name)
 
 			var defaultArrowFactory = props.defaultArrowFactory
 			var arrowUpFactory = props.arrowUpFactory || props.arrowFactory || defaultArrowFactory
 			var arrowDownFactory = props.arrowDownFactory || props.arrowFactory || defaultArrowFactory
 
 			arrowUp = arrowUpFactory(arrowUpProps)
+
 			if (arrowUp === undefined){
 				arrowUp = defaultArrowFactory(arrowUpProps)
 			}
@@ -325,7 +422,10 @@ module.exports = React.createClass({
 		var inputFactory = props[name + 'InputFactory'] || props.inputFactory || defaultInputFactory
 
 		var defaultInputProps = props['default' + upperName + 'InputProps']
-		var inputProps = assign({}, defaultInputProps, {
+		var inputProps        = props[name + 'InputProps']
+
+		var inputProps = assign({}, props.inputProps, defaultInputProps, inputProps, {
+			timeName: name,
 			style   : inputStyle,
 			value   : value,
 			onFocus : this.handleInputFocus.bind(this, props, name),
@@ -338,6 +438,7 @@ module.exports = React.createClass({
 		}
 
 		var input = inputFactory(inputProps)
+
 		if (input === undefined){
 			input = defaultInputFactory(inputProps)
 		}
@@ -356,6 +457,8 @@ module.exports = React.createClass({
 		focused[name] = {
 			value: this.format(props, name)
 		}
+
+		this.stopInterval()
 
 		this.setState({})
 	},
@@ -471,16 +574,16 @@ module.exports = React.createClass({
 	},
 
 	prepareStyle: function(props, state) {
-		return normalize(assign({}, props.defaultStyle, props.style))
+		return this.normalize(assign({}, props.defaultStyle, props.style))
 	},
 
 	prepareSeparatorStyle: function(props, state) {
-		return normalize(assign({}, props.defaultSeparatorStyle, props.separatorStyle))
+		return this.normalize(assign({}, props.defaultSeparatorStyle, props.separatorStyle))
 	},
 
 	prepareArrowStyles: function(props, state) {
-		props.arrowUpStyle = normalize(assign({}, props.defaultArrowStyle, props.defaultArrowUpStyle, props.arrowUpStyle))
-		props.arrowDownStyle = normalize(assign({}, props.defaultArrowStyle, props.defaultArrowDownStyle, props.arrowDownStyle))
+		props.arrowUpStyle = this.normalize(assign({}, props.defaultArrowStyle, props.defaultArrowUpStyle, props.arrowStyle, props.arrowUpStyle))
+		props.arrowDownStyle = this.normalize(assign({}, props.defaultArrowStyle, props.defaultArrowDownStyle, props.arrowStyle, props.arrowDownStyle))
 	},
 
 	prepareHourStyles: function(props, state) {
@@ -489,11 +592,11 @@ module.exports = React.createClass({
 	},
 
 	prepareHourStyle: function(props, state) {
-		return normalize(assign({}, props.defaultBoxStyle, props.defaultHourStyle, props.hourStyle))
+		return this.normalize(assign({}, props.defaultBoxStyle, props.defaultHourStyle, props.boxStyle, props.hourStyle))
 	},
 
 	prepareHourInputStyle: function(props, state) {
-		return normalize(assign({}, props.defaultInputStyle, props.defaultHourInputStyle, props.hourInputStyle))
+		return this.normalize(assign({}, props.defaultInputStyle, props.defaultHourInputStyle, props.inputStyle, props.hourInputStyle))
 	},
 
 	prepareMinuteStyles: function(props, state) {
@@ -502,11 +605,11 @@ module.exports = React.createClass({
 	},
 
 	prepareMinuteStyle: function(props, state) {
-		return normalize(assign({}, props.defaultBoxStyle, props.defaultMinuteStyle, props.minuteStyle))
+		return this.normalize(assign({}, props.defaultBoxStyle, props.defaultMinuteStyle, props.boxStyle, props.minuteStyle))
 	},
 
 	prepareMinuteInputStyle: function(props, state) {
-		return normalize(assign({}, props.defaultInputStyle, props.defaultMinuteInputStyle, props.minuteInputStyle))
+		return this.normalize(assign({}, props.defaultInputStyle, props.defaultMinuteInputStyle, props.inputStyle, props.minuteInputStyle))
 	},
 
 	prepareSecondStyles: function(props, state) {
@@ -517,11 +620,11 @@ module.exports = React.createClass({
 	},
 
 	prepareSecondStyle: function(props, state) {
-		return normalize(assign({}, props.defaultBoxStyle, props.defaultSecondStyle, props.secondStyle))
+		return this.normalize(assign({}, props.defaultBoxStyle, props.defaultSecondStyle, props.boxStyle, props.secondStyle))
 	},
 
 	prepareSecondInputStyle: function(props, state) {
-		return normalize(assign({}, props.defaultInputStyle, props.defaultSecondInputStyle, props.secondInputStyle))
+		return this.normalize(assign({}, props.defaultInputStyle, props.defaultSecondInputStyle, props.inputStyle, props.secondInputStyle))
 	},
 
 	prepareMeridianStyles: function(props, state){
@@ -532,10 +635,10 @@ module.exports = React.createClass({
 	},
 
 	prepareMeridianStyle: function(props, state) {
-		return normalize(assign({}, props.defaultBoxStyle, props.defaultMeridianStyle, props.meridianStyle))
+		return this.normalize(assign({}, props.defaultBoxStyle, props.defaultMeridianStyle, props.boxStyle, props.meridianStyle))
 	},
 
 	prepareMeridianInputStyle: function(props, state) {
-		return normalize(assign({}, props.defaultInputStyle, props.defaultMeridianInputStyle, props.meridianInputStyle))
+		return this.normalize(assign({}, props.defaultInputStyle, props.defaultMeridianInputStyle, props.inputStyle, props.meridianInputStyle))
 	}
 })
